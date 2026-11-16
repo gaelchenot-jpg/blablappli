@@ -1,0 +1,77 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Modèle vocal français (Vosk)
+        run: |
+          set -e
+          mkdir -p app/src/main/assets
+          cd app/src/main/assets
+          curl -fsSL -o model.zip https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip
+          unzip -q model.zip
+          rm -rf model-fr && mv vosk-model-small-fr-0.22 model-fr && rm model.zip
+          # fichier exigé par Vosk pour savoir quand recopier le modèle
+          echo "vosk-model-small-fr-0.22" > model-fr/uuid
+          du -sh model-fr
+
+      - name: Thésaurus français (LibreOffice)
+        run: |
+          cd app/src/main/assets
+          # le thésaurus est dans fr_FR/dictionaries/ (nom variable selon les versions)
+          name=$(curl -fsSL https://api.github.com/repos/LibreOffice/dictionaries/contents/fr_FR/dictionaries \
+            | python3 -c "import sys,json; print(next(f['name'] for f in json.load(sys.stdin) if f['name'].startswith('thes') and f['name'].endswith('.dat')))")
+          echo "Thésaurus : $name"
+          curl -fsSL -o thes_fr.dat "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/dictionaries/$name"
+          head -c 120 thes_fr.dat; echo; ls -la thes_fr.dat
+
+      - name: Tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Fabrication de l'APK
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Renommer l'APK
+        run: cp app/build/outputs/apk/release/app-release.apk blablappli.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blablappli-apk
+          path: android/blablappli.apk
+
+      - name: Publier (lien de téléchargement)
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: blablappli Android (dernière version)
+          prerelease: false
+          make_latest: true
+          body: |
+            Télécharge **blablappli.apk** depuis ton téléphone et ouvre-le pour l'installer.
+            Version ${{ github.run_number }}.
+          files: android/blablappli.apk
