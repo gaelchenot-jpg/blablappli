@@ -87,7 +87,11 @@ Etape "Téléchargement du dictionnaire des synonymes"
 $thes = Join-Path $here "data\thes_fr.dat"
 if (-not (Test-Path $thes)) {
     try {
-        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/thes_fr.dat" -OutFile $thes -UseBasicParsing -ErrorAction Stop
+        # le thésaurus est dans fr_FR/dictionaries/ (nom variable selon les versions)
+        $liste = Invoke-RestMethod -Uri "https://api.github.com/repos/LibreOffice/dictionaries/contents/fr_FR/dictionaries" -UseBasicParsing -ErrorAction Stop
+        $nom = ($liste | Where-Object { $_.name -like "thes*.dat" } | Select-Object -First 1).name
+        if (-not $nom) { throw "thésaurus introuvable" }
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/dictionaries/$nom" -OutFile $thes -UseBasicParsing -ErrorAction Stop
         Write-Host "Dictionnaire des synonymes installé."
     } catch {
         Write-Host "Le dictionnaire des synonymes n'a pas pu être téléchargé ($_)." -ForegroundColor Yellow
