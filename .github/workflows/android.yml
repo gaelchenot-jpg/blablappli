@@ -27,7 +27,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Modèle vocal français (Vosk) et thésaurus (LibreOffice)
+      - name: Modèle vocal français (Vosk)
         run: |
           set -e
           mkdir -p app/src/main/assets
@@ -37,9 +37,21 @@ jobs:
           rm -rf model-fr && mv vosk-model-small-fr-0.22 model-fr && rm model.zip
           # fichier exigé par Vosk pour savoir quand recopier le modèle
           echo "vosk-model-small-fr-0.22" > model-fr/uuid
-          curl -fsSL -o thes_fr.dat https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/thes_fr.dat
-          head -c 200 thes_fr.dat; echo
-          du -sh .
+          du -sh model-fr
+
+      - name: Thésaurus français (LibreOffice)
+        run: |
+          cd app/src/main/assets
+          base=https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR
+          for f in thes_fr.dat thes_fr_FR.dat thes_fr_FR_v2.dat; do
+            if curl -fsSL -o thes_fr.dat "$base/$f"; then echo "OK: $f"; break; fi
+          done
+          if [ ! -s thes_fr.dat ]; then
+            echo "Fichiers disponibles :"
+            curl -s https://api.github.com/repos/LibreOffice/dictionaries/contents/fr_FR | grep '"name"'
+            exit 1
+          fi
+          head -c 120 thes_fr.dat; echo; ls -la thes_fr.dat
 
       - name: Tests
         run: ./gradlew --no-daemon testDebugUnitTest
