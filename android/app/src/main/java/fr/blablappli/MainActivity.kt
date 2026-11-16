@@ -81,6 +81,9 @@ class MainActivity : Activity() {
         col.addView(check("Ponctuation automatique quand le téléphone a internet (reconnaissance Google) ; sinon dictée hors ligne", Prefs.onlinePunctuation(this)) {
             Prefs.setOnlinePunctuation(this, it)
         })
+        col.addView(check("Correction automatique des fautes et des mots mal compris quand le téléphone a internet (LanguageTool, gratuit)", Prefs.onlineCorrection(this)) {
+            Prefs.setOnlineCorrection(this, it)
+        })
         col.addView(check("Dictée continue (le texte s'écrit à chaque pause)", Prefs.continuous(this)) {
             Prefs.setContinuous(this, it)
         })

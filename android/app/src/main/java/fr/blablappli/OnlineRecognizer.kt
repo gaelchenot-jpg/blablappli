@@ -27,8 +27,10 @@ class OnlineRecognizer(
 ) : RecognitionListener {
 
     companion object {
-        fun usable(ctx: Context): Boolean {
-            if (!SpeechRecognizer.isRecognitionAvailable(ctx)) return false
+        fun usable(ctx: Context): Boolean =
+            SpeechRecognizer.isRecognitionAvailable(ctx) && hasInternet(ctx)
+
+        fun hasInternet(ctx: Context): Boolean {
             val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
             return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&

@@ -80,4 +80,7 @@ object Prefs {
     /** En ligne : reconnaissance d'Android, avec ponctuation automatique. */
     fun onlinePunctuation(ctx: Context) = sp(ctx).getBoolean("online", true)
     fun setOnlinePunctuation(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("online", v).apply()
+    /** En ligne : correction de grammaire et des mots confondus (LanguageTool, gratuit, sans clé). */
+    fun onlineCorrection(ctx: Context) = sp(ctx).getBoolean("online_correction", true)
+    fun setOnlineCorrection(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("online_correction", v).apply()
 }

@@ -45,4 +45,14 @@ class TextToolsTest {
         assertEquals("Demeure", t.synonyms("Maisons").first())
         assertTrue("véloce" in t.synonyms("rapides"))
     }
+
+    @Test fun languageTool() {
+        val text = "il sont allé a la plage"
+        val json = """{"matches":[
+          {"offset":0,"length":2,"replacements":[{"value":"Il"}],"rule":{"id":"UPPERCASE_SENTENCE_START","issueType":"typographical","category":{"id":"CASING"}}},
+          {"offset":3,"length":4,"replacements":[{"value":"est"},{"value":"sont"}],"rule":{"id":"AGREEMENT","issueType":"grammar","category":{"id":"GRAMMAR"}}},
+          {"offset":13,"length":1,"replacements":[{"value":"à"}],"rule":{"id":"A_A","issueType":"grammar","category":{"id":"CONFUSED_WORDS"}}}
+        ]}"""
+        assertEquals("il est allé à la plage", LanguageTool.apply(text, json))
+    }
 }

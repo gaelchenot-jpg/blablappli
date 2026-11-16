@@ -63,6 +63,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     private var recognizer: Recognizer? = null
     private var listening = false
     private var online: OnlineRecognizer? = null
+    private val corrector = java.util.concurrent.Executors.newSingleThreadExecutor()
     private val buffer = StringBuilder()
     private var lastDictation = ""
 
@@ -377,7 +378,20 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     override fun onTimeout() { stopListening() }
 
     /** Écrit un morceau dicté dans le champ actif. */
+    /**
+     * Prépare un morceau dicté (commandes vocales, correction LanguageTool si
+     * internet) sur un fil à part, puis l'écrit. Les morceaux restent dans l'ordre.
+     */
     private fun write(raw: String) {
+        val ctx = this
+        corrector.execute {
+            val t = if (Prefs.voiceCommands(ctx)) TextTools.applyVoiceCommands(raw) else raw.trim()
+            val fixed = if (Prefs.onlineCorrection(ctx) && OnlineRecognizer.hasInternet(ctx)) LanguageTool.correct(t) else t
+            main.post { writeNow(fixed) }
+        }
+    }
+
+    private fun writeNow(raw: String) {
         val node = target()
         if (node == null) {
             copyToClipboard(raw)
@@ -386,7 +400,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         }
         val text = currentText(node)
         val (s, e) = selection(node, text)
-        val piece = TextTools.process(raw, text.substring(0, s), Prefs.voiceCommands(this))
+        val piece = TextTools.joinWith(text.substring(0, s), raw)
         if (piece.isEmpty()) return
         replace(node, s, e, piece)
         lastDictation += piece
