@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">blablappli</string>
+    <string name="a11y_summary">Cercle de dictée vocale qui écrit dans toutes les applis</string>
+    <string name="a11y_description">blablappli affiche un cercle flottant. Appuie dessus pour dicter : le texte est écrit dans le champ où tu te trouves. blablappli a besoin de cette autorisation pour écrire dans les autres applis et pour lire le texte sélectionné (synonymes, répétitions). Rien n\'est envoyé sur internet : tout reste sur ton téléphone.</string>
+</resources>

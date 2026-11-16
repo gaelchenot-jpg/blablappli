@@ -11,7 +11,7 @@ Dictée vocale en français, gratuite et hors ligne, qui écrit dans **n'importe
 | Version | État |
 |---|---|
 | Windows | ✅ première version (dossier `windows/`) |
-| Android | 🔜 à venir |
+| Android | 🧪 première version (dossier `android/`) |
 
 ## Installer sur Windows
 
@@ -58,9 +58,22 @@ La ponctuation (virgules, points, points d'interrogation) est ajoutée automatiq
 - Le journal se trouve dans `%APPDATA%\blablappli\blablappli.log`.
 - Les réglages sont dans `%APPDATA%\blablappli\config.json`.
 
+## Installer sur Android
+
+1. Sur ton téléphone, ouvre la page **Releases** du dépôt (« blablappli Android (dernière version) ») et télécharge **blablappli.apk**.
+2. Ouvre le fichier. Android demande d'autoriser l'installation depuis ton navigateur : accepte.
+3. Ouvre blablappli et suis les 2 étapes : **autoriser le micro**, puis **activer le cercle** dans les réglages d'Accessibilité.
+   - Si l'interrupteur est grisé (« paramètre restreint ») : *Infos de l'appli* → ⋮ en haut à droite → *Autoriser les paramètres restreints*, puis recommence.
+4. Le cercle apparaît sur le côté de l'écran, par-dessus toutes les applis.
+
+**Utilisation** : touche un champ de texte, touche le cercle, parle, touche-le encore. Appui long sur le cercle : synonymes, répétitions, dictée continue.
+
+Sur Android, la reconnaissance vocale (Vosk) n'ajoute pas la ponctuation toute seule : dis « virgule », « point », « point d'interrogation », « à la ligne »… Les majuscules en début de phrase sont automatiques. Les mots reconnus sont toujours bien orthographiés ; la correction de grammaire (accords) n'est pas encore disponible sur Android.
+
 ## Outils libres utilisés
 
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (reconnaissance vocale, modèle Whisper d'OpenAI, licence MIT)
 - [Grammalecte](https://grammalecte.net) (correcteur français, GPL)
 - Thésaurus français de [LibreOffice](https://github.com/LibreOffice/dictionaries) (LGPL)
+- [Vosk](https://alphacephei.com/vosk/) (reconnaissance vocale hors ligne sur Android, Apache 2.0)
 - [PySide6 / Qt](https://www.qt.io/qt-for-python) (interface, LGPL)

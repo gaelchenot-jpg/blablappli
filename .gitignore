@@ -3,3 +3,8 @@ __pycache__/
 .venv/
 .pytest_cache/
 windows/data/thes_fr.dat
+android/.gradle/
+android/**/build/
+android/local.properties
+android/app/src/main/assets/model-fr/
+android/app/src/main/assets/thes_fr.dat
