@@ -60,11 +60,16 @@ La ponctuation (virgules, points, points d'interrogation) est ajoutée automatiq
 
 ## Installer sur Android
 
-1. Sur ton téléphone, ouvre la page **Releases** du dépôt (« blablappli Android (dernière version) ») et télécharge **blablappli.apk**.
-2. Ouvre le fichier. Android demande d'autoriser l'installation depuis ton navigateur : accepte.
-3. Ouvre blablappli et suis les 2 étapes : **autoriser le micro**, puis **activer le cercle** dans les réglages d'Accessibilité.
+1. Sur ton téléphone, télécharge **blablappli.apk** : https://github.com/gaelchenot-jpg/blablappli/releases/download/android-latest/blablappli.apk
+2. **Si Play Protect affiche « Appli bloquée pour protéger votre appareil »** (avec seulement un bouton OK) : c'est normal. Google bloque automatiquement toute appli installée hors du Play Store qui utilise l'*Accessibilité*, et c'est justement ce qui permet au cercle d'écrire dans les autres applis. Aucune signature ou réglage dans l'appli ne peut éviter ce blocage. Pour installer quand même :
+   - ouvre le **Play Store** → touche ta **photo de profil** en haut à droite → **Play Protect** → la **roue dentée** en haut à droite ;
+   - désactive **« Rechercher les menaces sur les applis avec Play Protect »** ;
+   - rouvre **blablappli.apk** et installe-le ;
+   - reviens dans Play Protect et **réactive** l'option. blablappli reste installé.
+3. Ouvre le fichier. Android demande d'autoriser l'installation depuis ton navigateur : accepte.
+4. Ouvre blablappli et suis les 2 étapes : **autoriser le micro**, puis **activer le cercle** dans les réglages d'Accessibilité.
    - Si l'interrupteur est grisé (« paramètre restreint ») : *Infos de l'appli* → ⋮ en haut à droite → *Autoriser les paramètres restreints*, puis recommence.
-4. Le cercle apparaît sur le côté de l'écran, par-dessus toutes les applis.
+5. Le cercle apparaît sur le côté de l'écran, par-dessus toutes les applis.
 
 **Utilisation** : touche un champ de texte, touche le cercle, parle, touche-le encore. Appui long sur le cercle : synonymes, répétitions, dictée continue.
 
