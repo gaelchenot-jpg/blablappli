@@ -43,7 +43,7 @@ jobs:
         run: |
           cd app/src/main/assets
           # le thésaurus est dans fr_FR/dictionaries/ (nom variable selon les versions)
-          name=$(curl -fsSL https://api.github.com/repos/LibreOffice/dictionaries/contents/fr_FR/dictionaries \
+          name=$(curl -fsSL --retry 3 -H "Authorization: Bearer ${{ github.token }}" https://api.github.com/repos/LibreOffice/dictionaries/contents/fr_FR/dictionaries \
             | python3 -c "import sys,json; print(next(f['name'] for f in json.load(sys.stdin) if f['name'].startswith('thes') and f['name'].endswith('.dat')))")
           echo "Thésaurus : $name"
           curl -fsSL -o thes_fr.dat "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/fr_FR/dictionaries/$name"

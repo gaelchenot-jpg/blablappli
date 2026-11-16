@@ -73,7 +73,26 @@ class MainActivity : Activity() {
         col.addView(button("Infos de l'appli", secondary = true) {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
-        showBubbleBtn = button("Afficher le cercle", secondary = true) { BubbleService.instance?.showBubble() }
+        showBubbleBtn = button("Afficher le cercle", secondary = true) {
+            val svc = BubbleService.instance
+            if (svc == null) {
+                // activé dans les réglages, mais le service ne tourne pas (arrêté par Android)
+                android.widget.Toast.makeText(
+                    this,
+                    "Le cercle n'est pas démarré. Dans la page qui s'ouvre, désactive puis réactive blablappli.",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            } else {
+                val err = svc.showBubble()
+                android.widget.Toast.makeText(
+                    this,
+                    err?.let { "Impossible d'afficher le cercle : $it" } ?: "Le cercle est affiché sur le côté droit de l'écran.",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                if (err == null) moveTaskToBack(true)
+            }
+        }
         col.addView(showBubbleBtn)
 
         // Options

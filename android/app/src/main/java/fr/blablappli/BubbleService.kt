@@ -73,7 +73,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         instance = this
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         Engine.init(this)
-        showBubble()
+        showBubble()?.let { Log.e(TAG, "cercle : $it") }
         Engine.withModel(this) { m ->
             bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR
             if (m == null) say("Modèle vocal introuvable : ${Engine.error}")
@@ -106,15 +106,45 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         PixelFormat.TRANSLUCENT,
     ).apply { gravity = Gravity.TOP or Gravity.START }
 
+    /** Affiche le cercle (ou le ramène à l'écran s'il est déjà là). Renvoie un message d'erreur, ou null. */
+    fun showBubble(): String? = try {
+        if (bubble != null) {
+            resetBubblePosition()
+            say("Je suis là !", 2500)
+        } else {
+            createBubble()
+        }
+        null
+    } catch (e: Exception) {
+        Log.e(TAG, "affichage du cercle", e)
+        e.message ?: e.toString()
+    }
+
+    private fun defaultPosition(size: Int): Pair<Int, Int> {
+        val m = resources.displayMetrics
+        return (m.widthPixels - size - (8 * dp).toInt()) to (m.heightPixels * 0.55).toInt()
+    }
+
+    private fun resetBubblePosition() {
+        val v = bubble ?: return
+        val p = bubbleParams ?: return
+        val (x, y) = defaultPosition(p.width)
+        p.x = x; p.y = y
+        wm.updateViewLayout(v, p)
+        getSharedPreferences("blablappli", MODE_PRIVATE).edit().remove("bubble_x").remove("bubble_y").apply()
+        placeCaption()
+    }
+
     @SuppressLint("ClickableViewAccessibility")
-    fun showBubble() {
-        if (bubble != null) return
+    private fun createBubble() {
         val size = (110 * dp).toInt()
         val sp = getSharedPreferences("blablappli", MODE_PRIVATE)
         val metrics = resources.displayMetrics
+        val (dx, dy) = defaultPosition(size)
         val params = overlayParams(size, size).apply {
-            x = sp.getInt("bubble_x", metrics.widthPixels - size - (8 * dp).toInt())
-            y = sp.getInt("bubble_y", (metrics.heightPixels * 0.55).toInt())
+            // on garde le cercle dans l'écran, même si la position mémorisée est hors champ
+            x = sp.getInt("bubble_x", dx).coerceIn(0, maxOf(0, metrics.widthPixels - size))
+            y = sp.getInt("bubble_y", dy).coerceIn(0, maxOf(0, metrics.heightPixels - size))
         }
         val v = JarvisView(this)
         v.continuous = Prefs.continuous(this)
