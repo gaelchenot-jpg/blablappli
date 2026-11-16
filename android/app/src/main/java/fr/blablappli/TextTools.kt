@@ -50,6 +50,9 @@ object TextTools {
         if (startsSentence) {
             val i = p.indexOfFirst { it.isLetter() }
             if (i >= 0) p = p.substring(0, i) + p[i].uppercaseChar() + p.substring(i + 1)
+        } else if (p.length > 1 && p[0].isUpperCase() && p[1].isLowerCase()) {
+            // phrase pas terminée : la reconnaissance a mis une majuscule de trop
+            p = p[0].lowercaseChar() + p.substring(1)
         }
         // majuscule après un point ou un retour dans le morceau lui-même
         p = Regex("""([.!?…]\s+|\n+)(\p{Ll})""").replace(p) { it.groupValues[1] + it.groupValues[2].uppercase() }

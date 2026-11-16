@@ -62,6 +62,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     private var speech: SpeechService? = null
     private var recognizer: Recognizer? = null
     private var listening = false
+    private var online: OnlineRecognizer? = null
     private val buffer = StringBuilder()
     private var lastDictation = ""
 
@@ -214,6 +215,15 @@ class BubbleService : AccessibilityService(), RecognitionListener {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
+        if (Prefs.onlinePunctuation(this) && OnlineRecognizer.usable(this)) {
+            startOnline()
+            return
+        }
+        startOffline()
+    }
+
+    /** Dictée hors ligne (Vosk). */
+    private fun startOffline() {
         if (Engine.model == null) {
             say("Le modèle vocal se prépare, encore un instant…")
             Engine.withModel(this) { m -> bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR }
@@ -249,10 +259,60 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         }
     }
 
+    /** Dictée en ligne (reconnaissance d'Android) : ponctuation automatique. */
+    private fun startOnline() {
+        buffer.setLength(0)
+        lastDictation = ""
+        val r = OnlineRecognizer(
+            this,
+            onPartial = { p ->
+                bubble?.pulse()
+                say((buffer.toString() + " " + p).trim().takeLast(120), 0)
+            },
+            onSegment = { t ->
+                if (Prefs.continuous(this)) write(t)
+                else {
+                    buffer.append(TextTools.joinWith(buffer.toString(), t))
+                    say(buffer.toString().takeLast(120), 0)
+                }
+            },
+            onFinished = {
+                online = null
+                flushBuffer()
+                say("", 0)
+                bubble?.state = JarvisView.State.IDLE
+            },
+            onFailed = { why ->
+                // pas de réseau ou service indisponible : on bascule hors ligne
+                Log.w(TAG, "en ligne indisponible ($why), passage hors ligne")
+                online = null
+                flushBuffer()
+                listening = false
+                say("Connexion indisponible : dictée hors ligne (sans ponctuation auto).", 3000)
+                startOffline()
+            },
+        )
+        online = r
+        listening = true
+        bubble?.badge = 0
+        bubble?.state = JarvisView.State.LISTENING
+        say("Je t'écoute…", 1500)
+        r.start()
+    }
+
+    private fun flushBuffer() {
+        if (!Prefs.continuous(this) && buffer.isNotEmpty()) write(buffer.toString())
+        buffer.setLength(0)
+    }
+
     private fun stopListening(cancel: Boolean = false) {
         if (!listening) return
         listening = false
         bubble?.state = JarvisView.State.PROCESSING
+        online?.let { r ->
+            if (cancel) { r.cancel(); online = null; bubble?.state = JarvisView.State.IDLE } else r.stop()
+            return
+        }
         if (cancel) {
             speech?.cancel()
             cleanup()

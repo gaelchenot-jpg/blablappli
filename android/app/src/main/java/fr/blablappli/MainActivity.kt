@@ -78,6 +78,9 @@ class MainActivity : Activity() {
 
         // Options
         col.addView(section("Options"))
+        col.addView(check("Ponctuation automatique quand le téléphone a internet (reconnaissance Google) ; sinon dictée hors ligne", Prefs.onlinePunctuation(this)) {
+            Prefs.setOnlinePunctuation(this, it)
+        })
         col.addView(check("Dictée continue (le texte s'écrit à chaque pause)", Prefs.continuous(this)) {
             Prefs.setContinuous(this, it)
         })
@@ -92,7 +95,7 @@ class MainActivity : Activity() {
                 "• Fais glisser le cercle pour le déplacer.\n" +
                 "• Appui long sur le cercle : synonymes du mot sélectionné, répétitions, dictée continue.\n" +
                 "• La pastille orange indique le nombre de mots répétés.\n\n" +
-                "Ponctuation : dis « virgule », « point », « point d'interrogation », « point d'exclamation », " +
+                "Avec internet, la ponctuation se met toute seule. Hors ligne, dis « virgule », « point », « point d'interrogation », « point d'exclamation », " +
                 "« deux points », « à la ligne », « point à la ligne », « nouveau paragraphe », " +
                 "« ouvrez les guillemets »… Les majuscules en début de phrase sont automatiques.",
             14f, "#D5E3EC",

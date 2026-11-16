@@ -21,6 +21,9 @@ class TextToolsTest {
         assertEquals(" Demain on part.", TextTools.process("demain on part point", "C'est fini."))
         assertEquals("Salut.\nÀ demain", TextTools.process("salut point à la ligne à demain", ""))
         assertEquals(",", TextTools.process("virgule", "Bonjour"))
+        // texte déjà ponctué par la reconnaissance en ligne
+        assertEquals(" tu as raison.", TextTools.process("Tu as raison.", "Je pense que"))
+        assertEquals(" Paris est loin ?", TextTools.process("Paris est loin ?", "Bonjour."))
     }
 
     @Test fun repetitions() {
