@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+windows/data/thes_fr.dat
