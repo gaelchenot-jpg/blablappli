@@ -15,11 +15,18 @@ Dictée vocale en français, gratuite et hors ligne, qui écrit dans **n'importe
 
 ## Installer sur Windows
 
-1. Télécharge le dossier (bouton vert **Code** → **Download ZIP** sur GitHub) et décompresse-le, par exemple dans `Documents`.
-2. Ouvre le dossier `windows` et double-clique sur **`installer.bat`**.
-   - Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même**.
-   - L'installation télécharge Python (si besoin), les composants, le correcteur, le dictionnaire des synonymes et le modèle de reconnaissance vocale (environ 1 Go en tout). Compte 5 à 15 minutes.
-3. À la fin, blablappli se lance et une icône **blablappli** apparaît sur le Bureau.
+1. Télécharge **blablappli-installation.exe** : https://github.com/gaelchenot-jpg/blablappli/releases/download/windows-latest/blablappli-installation.exe
+2. Double-clique dessus.
+   - Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même** (l'appli n'est pas signée, c'est normal pour une appli perso).
+3. Suis les étapes (tu peux cocher « Lancer blablappli au démarrage de Windows »). Pas besoin de droits administrateur.
+4. Au premier lancement, blablappli télécharge le modèle de reconnaissance vocale (environ 500 Mo, une seule fois) : le cercle reste gris quelques minutes, puis devient bleu. Ensuite tout marche sans internet.
+
+Pour désinstaller : *Paramètres Windows* → *Applications* → blablappli → *Désinstaller*.
+
+<details><summary>Ancienne méthode (script)</summary>
+
+Télécharge le dépôt (bouton vert **Code** → **Download ZIP**), décompresse-le, puis double-clique sur `windows\installer.bat`.
+</details>
 
 ## Utiliser blablappli
 

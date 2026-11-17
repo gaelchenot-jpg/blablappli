@@ -97,6 +97,12 @@ class App:
                 self.corrector = Corrector()
             from .stt import SpeechToText
 
+            models = app_dir() / "modeles"
+            if not any(models.glob(f"*{self.cfg.model}*")):
+                self.bridge.notify.emit(
+                    "Premier lancement : téléchargement du modèle de reconnaissance vocale "
+                    "(environ 500 Mo, une seule fois). Le cercle devient bleu quand c'est prêt."
+                )
             self.stt = None
             self.stt = SpeechToText(self.cfg.model, self.cfg.device)
             self.bridge.ready.emit(self.cfg.model)
@@ -384,6 +390,8 @@ _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
 def _launcher() -> str:
+    if getattr(sys, "frozen", False):  # version installée (blablappli.exe)
+        return f'"{sys.executable}"'
     vbs = Path(__file__).resolve().parent.parent / "lancer.vbs"
     return f'wscript.exe "{vbs}"'
 
@@ -412,7 +420,49 @@ def _set_autostart(on: bool) -> None:
                 pass
 
 
+def selftest(out_path: str) -> int:
+    """Vérifie que tous les composants se chargent (utilisé par la fabrication automatique)."""
+    lines = []
+    ok = True
+
+    def check(name, fn):
+        nonlocal ok
+        try:
+            lines.append(f"OK   {name}: {fn()}")
+        except Exception as e:  # noqa: BLE001
+            ok = False
+            lines.append(f"FAIL {name}: {type(e).__name__}: {e}")
+
+    from .corrector import Corrector
+
+    corrector = Corrector()
+    check("correcteur", lambda: f"{corrector.engine} -> {corrector.correct('Je suis aller a la maisson. Les enfant joue.')}")
+    check("grammalecte", lambda: corrector.engine == "Grammalecte" or (_ for _ in ()).throw(RuntimeError("absent")))
+    check("synonymes", lambda: Thesaurus().synonyms("maison")[:5] or (_ for _ in ()).throw(RuntimeError("vide")))
+    check("faster_whisper", lambda: __import__("faster_whisper").__version__)
+    check("ctranslate2", lambda: __import__("ctranslate2").__version__)
+    check("micro", lambda: f"{len(list_microphones())} micro(s)")
+    check("pynput", lambda: __import__("pynput.keyboard").keyboard.Controller.__name__)
+    check("repetitions", lambda: [r.label for r in find_repetitions("La maison est belle. La maison est grande.")])
+    Path(out_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return 0 if ok else 1
+
+
+def _fix_stdio():
+    # programme sans console : sys.stdout/stderr valent None, ce qui fait planter
+    # certaines bibliothèques (barres de progression des téléchargements).
+    import os
+
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
+
 def main():
+    _fix_stdio()
+    if len(sys.argv) >= 3 and sys.argv[1] == "--selftest":
+        return selftest(sys.argv[2])
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
