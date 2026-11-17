@@ -62,6 +62,8 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     private var speech: SpeechService? = null
     private var recognizer: Recognizer? = null
     private var listening = false
+    private var online: OnlineRecognizer? = null
+    private val corrector = java.util.concurrent.Executors.newSingleThreadExecutor()
     private val buffer = StringBuilder()
     private var lastDictation = ""
 
@@ -71,7 +73,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         instance = this
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         Engine.init(this)
-        showBubble()
+        showBubble()?.let { Log.e(TAG, "cercle : $it") }
         Engine.withModel(this) { m ->
             bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR
             if (m == null) say("Modèle vocal introuvable : ${Engine.error}")
@@ -104,15 +106,45 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         PixelFormat.TRANSLUCENT,
     ).apply { gravity = Gravity.TOP or Gravity.START }
 
+    /** Affiche le cercle (ou le ramène à l'écran s'il est déjà là). Renvoie un message d'erreur, ou null. */
+    fun showBubble(): String? = try {
+        if (bubble != null) {
+            resetBubblePosition()
+            say("Je suis là !", 2500)
+        } else {
+            createBubble()
+        }
+        null
+    } catch (e: Exception) {
+        Log.e(TAG, "affichage du cercle", e)
+        e.message ?: e.toString()
+    }
+
+    private fun defaultPosition(size: Int): Pair<Int, Int> {
+        val m = resources.displayMetrics
+        return (m.widthPixels - size - (8 * dp).toInt()) to (m.heightPixels * 0.55).toInt()
+    }
+
+    private fun resetBubblePosition() {
+        val v = bubble ?: return
+        val p = bubbleParams ?: return
+        val (x, y) = defaultPosition(p.width)
+        p.x = x; p.y = y
+        wm.updateViewLayout(v, p)
+        getSharedPreferences("blablappli", MODE_PRIVATE).edit().remove("bubble_x").remove("bubble_y").apply()
+        placeCaption()
+    }
+
     @SuppressLint("ClickableViewAccessibility")
-    fun showBubble() {
-        if (bubble != null) return
+    private fun createBubble() {
         val size = (110 * dp).toInt()
         val sp = getSharedPreferences("blablappli", MODE_PRIVATE)
         val metrics = resources.displayMetrics
+        val (dx, dy) = defaultPosition(size)
         val params = overlayParams(size, size).apply {
-            x = sp.getInt("bubble_x", metrics.widthPixels - size - (8 * dp).toInt())
-            y = sp.getInt("bubble_y", (metrics.heightPixels * 0.55).toInt())
+            // on garde le cercle dans l'écran, même si la position mémorisée est hors champ
+            x = sp.getInt("bubble_x", dx).coerceIn(0, maxOf(0, metrics.widthPixels - size))
+            y = sp.getInt("bubble_y", dy).coerceIn(0, maxOf(0, metrics.heightPixels - size))
         }
         val v = JarvisView(this)
         v.continuous = Prefs.continuous(this)
@@ -214,6 +246,15 @@ class BubbleService : AccessibilityService(), RecognitionListener {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
+        if (Prefs.onlinePunctuation(this) && OnlineRecognizer.usable(this)) {
+            startOnline()
+            return
+        }
+        startOffline()
+    }
+
+    /** Dictée hors ligne (Vosk). */
+    private fun startOffline() {
         if (Engine.model == null) {
             say("Le modèle vocal se prépare, encore un instant…")
             Engine.withModel(this) { m -> bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR }
@@ -249,10 +290,60 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         }
     }
 
+    /** Dictée en ligne (reconnaissance d'Android) : ponctuation automatique. */
+    private fun startOnline() {
+        buffer.setLength(0)
+        lastDictation = ""
+        val r = OnlineRecognizer(
+            this,
+            onPartial = { p ->
+                bubble?.pulse()
+                say((buffer.toString() + " " + p).trim().takeLast(120), 0)
+            },
+            onSegment = { t ->
+                if (Prefs.continuous(this)) write(t)
+                else {
+                    buffer.append(TextTools.joinWith(buffer.toString(), t))
+                    say(buffer.toString().takeLast(120), 0)
+                }
+            },
+            onFinished = {
+                online = null
+                flushBuffer()
+                say("", 0)
+                bubble?.state = JarvisView.State.IDLE
+            },
+            onFailed = { why ->
+                // pas de réseau ou service indisponible : on bascule hors ligne
+                Log.w(TAG, "en ligne indisponible ($why), passage hors ligne")
+                online = null
+                flushBuffer()
+                listening = false
+                say("Connexion indisponible : dictée hors ligne (sans ponctuation auto).", 3000)
+                startOffline()
+            },
+        )
+        online = r
+        listening = true
+        bubble?.badge = 0
+        bubble?.state = JarvisView.State.LISTENING
+        say("Je t'écoute…", 1500)
+        r.start()
+    }
+
+    private fun flushBuffer() {
+        if (!Prefs.continuous(this) && buffer.isNotEmpty()) write(buffer.toString())
+        buffer.setLength(0)
+    }
+
     private fun stopListening(cancel: Boolean = false) {
         if (!listening) return
         listening = false
         bubble?.state = JarvisView.State.PROCESSING
+        online?.let { r ->
+            if (cancel) { r.cancel(); online = null; bubble?.state = JarvisView.State.IDLE } else r.stop()
+            return
+        }
         if (cancel) {
             speech?.cancel()
             cleanup()
@@ -317,7 +408,20 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     override fun onTimeout() { stopListening() }
 
     /** Écrit un morceau dicté dans le champ actif. */
+    /**
+     * Prépare un morceau dicté (commandes vocales, correction LanguageTool si
+     * internet) sur un fil à part, puis l'écrit. Les morceaux restent dans l'ordre.
+     */
     private fun write(raw: String) {
+        val ctx = this
+        corrector.execute {
+            val t = if (Prefs.voiceCommands(ctx)) TextTools.applyVoiceCommands(raw) else raw.trim()
+            val fixed = if (Prefs.onlineCorrection(ctx) && OnlineRecognizer.hasInternet(ctx)) LanguageTool.correct(t) else t
+            main.post { writeNow(fixed) }
+        }
+    }
+
+    private fun writeNow(raw: String) {
         val node = target()
         if (node == null) {
             copyToClipboard(raw)
@@ -326,7 +430,7 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         }
         val text = currentText(node)
         val (s, e) = selection(node, text)
-        val piece = TextTools.process(raw, text.substring(0, s), Prefs.voiceCommands(this))
+        val piece = TextTools.joinWith(text.substring(0, s), raw)
         if (piece.isEmpty()) return
         replace(node, s, e, piece)
         lastDictation += piece

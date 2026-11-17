@@ -73,11 +73,36 @@ class MainActivity : Activity() {
         col.addView(button("Infos de l'appli", secondary = true) {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
-        showBubbleBtn = button("Afficher le cercle", secondary = true) { BubbleService.instance?.showBubble() }
+        showBubbleBtn = button("Afficher le cercle", secondary = true) {
+            val svc = BubbleService.instance
+            if (svc == null) {
+                // activé dans les réglages, mais le service ne tourne pas (arrêté par Android)
+                android.widget.Toast.makeText(
+                    this,
+                    "Le cercle n'est pas démarré. Dans la page qui s'ouvre, désactive puis réactive blablappli.",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            } else {
+                val err = svc.showBubble()
+                android.widget.Toast.makeText(
+                    this,
+                    err?.let { "Impossible d'afficher le cercle : $it" } ?: "Le cercle est affiché sur le côté droit de l'écran.",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                if (err == null) moveTaskToBack(true)
+            }
+        }
         col.addView(showBubbleBtn)
 
         // Options
         col.addView(section("Options"))
+        col.addView(check("Ponctuation automatique quand le téléphone a internet (reconnaissance Google) ; sinon dictée hors ligne", Prefs.onlinePunctuation(this)) {
+            Prefs.setOnlinePunctuation(this, it)
+        })
+        col.addView(check("Correction automatique des fautes et des mots mal compris quand le téléphone a internet (LanguageTool, gratuit)", Prefs.onlineCorrection(this)) {
+            Prefs.setOnlineCorrection(this, it)
+        })
         col.addView(check("Dictée continue (le texte s'écrit à chaque pause)", Prefs.continuous(this)) {
             Prefs.setContinuous(this, it)
         })
@@ -92,7 +117,7 @@ class MainActivity : Activity() {
                 "• Fais glisser le cercle pour le déplacer.\n" +
                 "• Appui long sur le cercle : synonymes du mot sélectionné, répétitions, dictée continue.\n" +
                 "• La pastille orange indique le nombre de mots répétés.\n\n" +
-                "Ponctuation : dis « virgule », « point », « point d'interrogation », « point d'exclamation », " +
+                "Avec internet, la ponctuation se met toute seule. Hors ligne, dis « virgule », « point », « point d'interrogation », « point d'exclamation », " +
                 "« deux points », « à la ligne », « point à la ligne », « nouveau paragraphe », " +
                 "« ouvrez les guillemets »… Les majuscules en début de phrase sont automatiques.",
             14f, "#D5E3EC",

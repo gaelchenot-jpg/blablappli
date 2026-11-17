@@ -21,6 +21,9 @@ class TextToolsTest {
         assertEquals(" Demain on part.", TextTools.process("demain on part point", "C'est fini."))
         assertEquals("Salut.\nÀ demain", TextTools.process("salut point à la ligne à demain", ""))
         assertEquals(",", TextTools.process("virgule", "Bonjour"))
+        // texte déjà ponctué par la reconnaissance en ligne
+        assertEquals(" tu as raison.", TextTools.process("Tu as raison.", "Je pense que"))
+        assertEquals(" Paris est loin ?", TextTools.process("Paris est loin ?", "Bonjour."))
     }
 
     @Test fun repetitions() {
@@ -41,5 +44,15 @@ class TextToolsTest {
         assertEquals(listOf("demeure", "habitation"), t.synonyms("maison").take(2))
         assertEquals("Demeure", t.synonyms("Maisons").first())
         assertTrue("véloce" in t.synonyms("rapides"))
+    }
+
+    @Test fun languageTool() {
+        val text = "il sont allé a la plage"
+        val json = """{"matches":[
+          {"offset":0,"length":2,"replacements":[{"value":"Il"}],"rule":{"id":"UPPERCASE_SENTENCE_START","issueType":"typographical","category":{"id":"CASING"}}},
+          {"offset":3,"length":4,"replacements":[{"value":"est"},{"value":"sont"}],"rule":{"id":"AGREEMENT","issueType":"grammar","category":{"id":"GRAMMAR"}}},
+          {"offset":13,"length":1,"replacements":[{"value":"à"}],"rule":{"id":"A_A","issueType":"grammar","category":{"id":"CONFUSED_WORDS"}}}
+        ]}"""
+        assertEquals("il est allé à la plage", LanguageTool.apply(text, json))
     }
 }

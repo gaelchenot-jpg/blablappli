@@ -77,4 +77,10 @@ object Prefs {
     fun setContinuous(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("continuous", v).apply()
     fun voiceCommands(ctx: Context) = sp(ctx).getBoolean("voice_commands", true)
     fun setVoiceCommands(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("voice_commands", v).apply()
+    /** En ligne : reconnaissance d'Android, avec ponctuation automatique. */
+    fun onlinePunctuation(ctx: Context) = sp(ctx).getBoolean("online", true)
+    fun setOnlinePunctuation(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("online", v).apply()
+    /** En ligne : correction de grammaire et des mots confondus (LanguageTool, gratuit, sans clé). */
+    fun onlineCorrection(ctx: Context) = sp(ctx).getBoolean("online_correction", true)
+    fun setOnlineCorrection(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("online_correction", v).apply()
 }
