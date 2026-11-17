@@ -43,8 +43,10 @@ class MainActivity : Activity() {
         })
         col.addView(text("blablappli", 28f, "#EAFCFF", bold = true).apply { gravity = Gravity.CENTER })
         col.addView(text("Dictée vocale en français, dans toutes tes applis, sans internet.", 15f, "#8FB3C9").apply {
-            gravity = Gravity.CENTER; setPadding(0, 0, 0, px(18))
+            gravity = Gravity.CENTER; setPadding(0, 0, 0, px(4))
         })
+        val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
+        col.addView(text("Version $version", 12f, "#5F7A8C").apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, px(18)) })
 
         // Étape 1
         col.addView(section("1. Autoriser le micro"))
@@ -73,26 +75,7 @@ class MainActivity : Activity() {
         col.addView(button("Infos de l'appli", secondary = true) {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
-        showBubbleBtn = button("Afficher le cercle", secondary = true) {
-            val svc = BubbleService.instance
-            if (svc == null) {
-                // activé dans les réglages, mais le service ne tourne pas (arrêté par Android)
-                android.widget.Toast.makeText(
-                    this,
-                    "Le cercle n'est pas démarré. Dans la page qui s'ouvre, désactive puis réactive blablappli.",
-                    android.widget.Toast.LENGTH_LONG,
-                ).show()
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            } else {
-                val err = svc.showBubble()
-                android.widget.Toast.makeText(
-                    this,
-                    err?.let { "Impossible d'afficher le cercle : $it" } ?: "Le cercle est affiché sur le côté droit de l'écran.",
-                    android.widget.Toast.LENGTH_LONG,
-                ).show()
-                if (err == null) moveTaskToBack(true)
-            }
-        }
+        showBubbleBtn = button("Afficher le cercle") { onShowBubble() }
         col.addView(showBubbleBtn)
 
         // Options
@@ -148,7 +131,32 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        // le cercle s'affiche tout seul à l'ouverture de l'appli, s'il est activé
+        BubbleService.instance?.showBubble(quiet = true)
     }
+
+    private fun onShowBubble() {
+        val svc = BubbleService.instance
+        when {
+            !accessibilityEnabled() -> {
+                toast("Active d'abord « blablappli » dans la page qui s'ouvre (étape 2).")
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+            svc == null -> {
+                // coché dans les réglages, mais Android a arrêté le service
+                toast("Le cercle est arrêté par Android. Dans la page qui s'ouvre, désactive puis réactive « blablappli ».")
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+            else -> {
+                val err = svc.showBubble()
+                if (err != null) toast("Impossible d'afficher le cercle : $err")
+                else { toast("Le cercle est sur le côté droit de l'écran."); moveTaskToBack(true) }
+            }
+        }
+        refresh()
+    }
+
+    private fun toast(s: String) = android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_LONG).show()
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -161,9 +169,16 @@ class MainActivity : Activity() {
         micStatus.setTextColor(Color.parseColor(if (mic) "#1FD18B" else "#FFC35C"))
 
         val on = accessibilityEnabled()
-        a11yStatus.text = if (on) "✓ Cercle activé" else "Pas encore activé"
-        a11yStatus.setTextColor(Color.parseColor(if (on) "#1FD18B" else "#FFC35C"))
-        showBubbleBtn.visibility = if (on) android.view.View.VISIBLE else android.view.View.GONE
+        val running = BubbleService.instance != null
+        val lastError = getSharedPreferences("blablappli", MODE_PRIVATE).getString("bubble_error", null)
+        a11yStatus.text = when {
+            on && running && lastError == null -> "✓ Cercle activé"
+            on && running -> "Le cercle est activé mais n'a pas pu s'afficher : $lastError"
+            on -> "Activé dans les réglages, mais Android l'a arrêté : désactive puis réactive « blablappli »."
+            else -> "Pas encore activé"
+        }
+        a11yStatus.setTextColor(Color.parseColor(if (on && running && lastError == null) "#1FD18B" else "#FFC35C"))
+        showBubbleBtn.text = if (on) "Afficher le cercle" else "Activer le cercle"
 
         modelStatus.text = when {
             Engine.model != null -> "✓ Reconnaissance vocale prête"

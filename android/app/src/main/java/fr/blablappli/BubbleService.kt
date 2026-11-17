@@ -72,12 +72,15 @@ class BubbleService : AccessibilityService(), RecognitionListener {
         super.onServiceConnected()
         instance = this
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        Engine.init(this)
+        // une erreur ici ne doit pas arrêter le service : on la garde pour l'afficher dans l'appli
+        runCatching { Engine.init(this) }.onFailure { Log.e(TAG, "init", it) }
         showBubble()?.let { Log.e(TAG, "cercle : $it") }
-        Engine.withModel(this) { m ->
-            bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR
-            if (m == null) say("Modèle vocal introuvable : ${Engine.error}")
-        }
+        runCatching {
+            Engine.withModel(this) { m ->
+                bubble?.state = if (m != null) JarvisView.State.IDLE else JarvisView.State.ERROR
+                if (m == null) say("Modèle vocal introuvable : ${Engine.error}")
+            }
+        }.onFailure { Log.e(TAG, "modèle", it) }
     }
 
     override fun onDestroy() {
@@ -107,17 +110,26 @@ class BubbleService : AccessibilityService(), RecognitionListener {
     ).apply { gravity = Gravity.TOP or Gravity.START }
 
     /** Affiche le cercle (ou le ramène à l'écran s'il est déjà là). Renvoie un message d'erreur, ou null. */
-    fun showBubble(): String? = try {
-        if (bubble != null) {
-            resetBubblePosition()
-            say("Je suis là !", 2500)
-        } else {
-            createBubble()
+    fun showBubble(quiet: Boolean = false): String? {
+        val sp = getSharedPreferences("blablappli", MODE_PRIVATE)
+        return try {
+            if (bubble != null) {
+                if (!quiet) {
+                    resetBubblePosition()
+                    say("Je suis là !", 2500)
+                }
+            } else {
+                createBubble()
+            }
+            sp.edit().remove("bubble_error").apply()
+            null
+        } catch (e: Throwable) {
+            Log.e(TAG, "affichage du cercle", e)
+            removeOverlays()
+            val msg = e.message ?: e.toString()
+            sp.edit().putString("bubble_error", msg).apply()
+            msg
         }
-        null
-    } catch (e: Exception) {
-        Log.e(TAG, "affichage du cercle", e)
-        e.message ?: e.toString()
     }
 
     private fun defaultPosition(size: Int): Pair<Int, Int> {
