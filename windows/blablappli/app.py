@@ -463,6 +463,10 @@ def main():
     _fix_stdio()
     if len(sys.argv) >= 3 and sys.argv[1] == "--selftest":
         return selftest(sys.argv[2])
+    if len(sys.argv) >= 4 and sys.argv[1] == "--e2e":
+        from .e2e import run
+
+        return run(sys.argv[2], sys.argv[3])
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",

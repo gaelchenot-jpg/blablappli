@@ -12,7 +12,28 @@ permissions:
   contents: write
 
 jobs:
+  voix:
+    # phrases françaises enregistrées par une voix de synthèse, pour l'essai complet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Phrases d'essai
+        run: |
+          pip install piper-tts
+          base=https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium
+          curl -sSfL -o voix.onnx $base/fr_FR-siwis-medium.onnx
+          curl -sSfL -o voix.onnx.json $base/fr_FR-siwis-medium.onnx.json
+          python windows/tests/make_audio.py voix.onnx phrases
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phrases
+          path: phrases
+
   build:
+    needs: voix
     runs-on: windows-latest
     defaults:
       run:
@@ -68,6 +89,11 @@ jobs:
           Get-Content selftest.txt
           if ($p.ExitCode -ne 0) { throw "Vérification échouée (code $($p.ExitCode))" }
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: phrases
+          path: windows/phrases
+
       - name: Programme d'installation
         run: |
           $env:BLABLAPPLI_VERSION = "0.1.${{ github.run_number }}"
@@ -76,6 +102,32 @@ jobs:
           & $iscc blablappli.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué" }
           Get-ChildItem dist\*.exe
+
+      - name: Installation (comme sur un vrai PC)
+        run: |
+          $p = Start-Process -FilePath dist\blablappli-installation.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=desktopicon" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installation échouée (code $($p.ExitCode))" }
+          $exe = "$env:LOCALAPPDATA\Programs\blablappli\blablappli.exe"
+          if (-not (Test-Path $exe)) { throw "blablappli.exe absent après installation" }
+          $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "blablappli.lnk"
+          if (-not (Test-Path $lnk)) { throw "Raccourci du Bureau absent" }
+          Write-Host "Installé : $exe, raccourci : $lnk"
+
+      - name: Essai complet (dictée dans le Bloc-notes)
+        timeout-minutes: 40
+        run: |
+          $exe = "$env:LOCALAPPDATA\Programs\blablappli\blablappli.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--e2e", "$PWD\e2e.txt", "$PWD\phrases" -Wait -PassThru
+          Get-Content e2e.txt
+          if ($p.ExitCode -ne 0) { throw "Essai complet échoué (code $($p.ExitCode))" }
+
+      - name: Désinstallation
+        run: |
+          $u = "$env:LOCALAPPDATA\Programs\blablappli\unins000.exe"
+          $p = Start-Process -FilePath $u -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES" -Wait -PassThru
+          Start-Sleep -Seconds 3
+          if (Test-Path "$env:LOCALAPPDATA\Programs\blablappli\blablappli.exe") { throw "Désinstallation incomplète" }
+          Write-Host "Désinstallé proprement"
 
       - uses: actions/upload-artifact@v4
         with:
