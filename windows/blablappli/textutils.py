@@ -41,6 +41,12 @@ _COMMANDS = [
     (r"\s*\bpoint d'exclamation\b[,.]?", " !"),
     (r"\s*\bdeux points\b[,.]?", " :"),
     (r"\s*\bpoint virgule\b[,.]?", " ;"),
+    (r"\s*\bpoints? de suspension\b[,.]?", "…"),
+    (r"\s*\bouvrez? la parenth[èe]se\b[,.]?\s*", " ("),
+    (r"[,.]?\s*\bfermez? la parenth[èe]se\b", ")"),
+    (r"[,.]?\s*\bvirgule\b[,.]?", ","),
+    # « point » seul n'est une ponctuation qu'en fin de phrase dictée
+    (r"[,.]?\s*\bpoint\b[.]?\s*$", "."),
 ]
 
 
@@ -48,6 +54,11 @@ def apply_voice_commands(text: str) -> str:
     out = text
     for pattern, repl in _COMMANDS:
         out = re.sub(pattern, repl, out, flags=re.IGNORECASE)
+    # Whisper met souvent la ponctuation lui-même : on évite « ? ? » ou « ., »
+    out = re.sub(r"\s*([?!])(?:\s*[?!.])+", r" \1", out)
+    out = re.sub(r"[,.;:]\s*([,.;:…])", r"\1", out)
+    out = re.sub(r"([,;:!?…»)])(?=[^\s\n,.;:!?…»)\d])", r"\1 ", out)
+    out = re.sub(r"\.(?=[A-ZÀÂÉÈÊÎÔÛÇ])", ". ", out)
     # Majuscule après un retour à la ligne
     out = re.sub(r"(\n+)\s*([a-zàâäéèêëîïôöùûüç])", lambda m: m.group(1) + m.group(2).upper(), out)
     return out.strip(" ")
