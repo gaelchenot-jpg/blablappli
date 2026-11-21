@@ -247,7 +247,11 @@ def run(out_path: str, audio_dir: str) -> int:
             got = pad.text()
             e = wer(expected, got)
             check("texte dicté écrit dans le Bloc-notes", e <= 0.25, f"{time.time() - t1:.1f} s, erreurs {e:.0%}\n       attendu : {expected}\n       obtenu  : {got}")
-            check("ponctuation dictée (« virgule », « point d'interrogation »)", "," in got and "?" in got)
+            check(
+                "ponctuation dictée (« virgule », « point d'interrogation »)",
+                "," in got and "?" in got and "virgule" not in got.lower() and not re.search(r"[?!.,]\s*[?!.,]", got),
+                got,
+            )
             check("majuscule en début de texte", got[:1].isupper())
             check("le Bloc-notes garde la main après l'écriture", foreground_is(pad.hwnd))
 
@@ -269,7 +273,7 @@ def run(out_path: str, audio_dir: str) -> int:
             wait(idle, 120)
             got = pad.text()
             e = wer(expected, got)
-            check("dictée continue : tout le texte est écrit", e <= 0.25, f"erreurs {e:.0%}\n       obtenu  : {got}")
+            check("dictée continue : tout le texte est écrit", e <= 0.25 and "virgule" not in got.lower(), f"erreurs {e:.0%}\n       obtenu  : {got}")
             app.cfg.continuous = False
 
             # 3. raccourci clavier

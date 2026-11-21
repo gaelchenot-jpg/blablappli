@@ -281,9 +281,9 @@ class App:
     # --- Raccourcis clavier ------------------------------------------------------------------
     def _start_hotkeys(self):
         try:
-            from pynput import keyboard
+            from .hotkeys import GlobalHotkeys
 
-            self._hotkeys = keyboard.GlobalHotKeys(
+            self._hotkeys = GlobalHotkeys(
                 {
                     self.cfg.hotkey_dictation: self.bridge.toggle.emit,
                     self.cfg.hotkey_synonyms: lambda: (self._remember_now(), self.bridge.synonyms.emit()),
@@ -291,6 +291,10 @@ class App:
                 }
             )
             self._hotkeys.start()
+            if self._hotkeys.failed:
+                self.bridge.notify.emit(
+                    "Raccourci déjà utilisé par un autre logiciel : " + ", ".join(self._hotkeys.failed)
+                )
         except Exception:
             log.exception("raccourcis clavier")
 

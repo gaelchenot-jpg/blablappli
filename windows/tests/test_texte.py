@@ -76,3 +76,31 @@ def test_corrector_runs():
     print(c.engine, "->", out)
     if c.engine == "pyspellchecker":
         assert "maison" in out
+
+
+def test_virgule_et_point_dictes():
+    assert apply_voice_commands("Bonjour virgule, je teste la dictée point") == "Bonjour, je teste la dictée."
+    assert apply_voice_commands("Bonjour, virgule je teste") == "Bonjour, je teste"
+    assert apply_voice_commands("Le point de vue est clair") == "Le point de vue est clair"
+
+
+def test_pas_de_ponctuation_en_double():
+    assert apply_voice_commands("Tu viens ce soir? point d'interrogation") == "Tu viens ce soir ?"
+    assert apply_voice_commands("Tu viens ce soir ? Point d'interrogation.") == "Tu viens ce soir ?"
+    assert apply_voice_commands("C'est génial! point d'exclamation") == "C'est génial !"
+
+
+def test_parentheses_et_suspension():
+    assert apply_voice_commands("Il est venu ouvrez la parenthèse enfin fermez la parenthèse") == "Il est venu (enfin)"
+    assert apply_voice_commands("Je ne sais pas points de suspension") == "Je ne sais pas…"
+
+
+def test_pas_d_espace_dans_les_nombres_et_adresses():
+    assert apply_voice_commands("Il fait 3,5 degrés sur meteo.fr") == "Il fait 3,5 degrés sur meteo.fr"
+
+
+def test_raccourcis():
+    from blablappli.hotkeys import parse
+
+    assert parse("<ctrl>+<alt>+d") == (0x3, ord("D"))
+    assert parse("<ctrl>+<shift>+<f2>") == (0x6, 0x71)
